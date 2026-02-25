@@ -13,7 +13,7 @@ builtins.input = lambda prompt="": (print(f"{prompt}y  ← auto-approvato (dry r
 
 from social_agent.agent import SocialAgent
 from social_agent.models import (
-    VideoConcept, VideoScene, ContentReview, Platform, PostDraft, SpielbiergReview
+    VideoConcept, VideoScene, ContentReview, Platform, PostDraft
 )
 from social_agent.meta_client import MetaClient
 from social_agent.models import PublishResult
@@ -174,6 +174,7 @@ POSTS = [
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from social_agent.video_generator_agent import VideoGeneratorAgent
+from social_agent.spielbierg_agent import SpielbiergAgent
 from social_agent.models import ContentReview
 
 agent = SocialAgent()
@@ -189,21 +190,48 @@ for i, post in enumerate(POSTS, 1):
     # ── Step 3: VC ──────────────────────────────────────────────────────────
     print(f"\n  [VC] Concept '{concept.title}' generato ({concept.total_duration_seconds}s).")
 
-    # ── Step 4: Runway (chiamata reale) ─────────────────────────────────────
-    vg_result = VideoGeneratorAgent().generate(concept, post["platform"])
-    agent._current_video_url = vg_result.video_url if vg_result.status == "succeeded" else None
+    # ── Step 4 + 5: Runway → Spielbierg (reali, max 3 tentativi) ────────────
+    MAX_SPIELBIERG_ATTEMPTS = 3
+    additional_notes = None
+    agent._spielbierg_attempts = 0
+    agent._current_spielbierg_review = None
 
-    # ── Step 5: Spielbierg (mock — dry run) ─────────────────────────────────
-    agent._spielbierg_attempts = 1
-    agent._current_spielbierg_review = SpielbiergReview(
-        approved=True,
-        realism_score=8,
-        adherence_score=7,
-        issues=[],
-        improved_prompt_notes="",
-        verdict="Video approvato per dry run.",
-    )
-    print(f"\n  [Spielbierg] APPROVED — Realism: 8/10, Adherence: 7/10.")
+    for attempt in range(1, MAX_SPIELBIERG_ATTEMPTS + 1):
+        vg_result = VideoGeneratorAgent().generate(
+            concept, post["platform"], additional_notes=additional_notes
+        )
+        agent._current_video_url = vg_result.video_url if vg_result.status == "succeeded" else None
+
+        if not agent._current_video_url:
+            # Runway fallito — salta Spielbierg
+            break
+
+        agent._spielbierg_attempts = attempt
+        print(f"\n  [Spielbierg] Analisi video (tentativo {attempt}/{MAX_SPIELBIERG_ATTEMPTS})...")
+        review = SpielbiergAgent().review_video(
+            video_url=agent._current_video_url,
+            concept=concept,
+            caption=post["caption"],
+            hashtags=post["hashtags"],
+        )
+        agent._current_spielbierg_review = review
+        status = "APPROVED" if review.approved else "REJECTED"
+        print(
+            f"  [Spielbierg] {status} — "
+            f"Realism {review.realism_score}/10, Adherence {review.adherence_score}/10"
+        )
+        print(f"  Verdetto: {review.verdict}")
+        if review.issues:
+            for issue in review.issues:
+                print(f"    • {issue}")
+
+        if review.approved:
+            break
+        if attempt < MAX_SPIELBIERG_ATTEMPTS:
+            print(f"  [Spielbierg] Rigenerazione con note: {review.improved_prompt_notes}")
+            additional_notes = review.improved_prompt_notes
+        else:
+            print("  [Spielbierg] 3 tentativi esauriti — procedo con il video disponibile.")
 
     # ── Step 6: SMCC (mock — nessuna API Anthropic necessaria) ──────────────
     agent._current_review = ContentReview(
