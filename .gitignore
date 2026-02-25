@@ -1,0 +1,59 @@
+# ─── Secrets ──────────────────────────────────────────────────────────────────
+.env
+
+# ─── Virtual environment ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+.eggs/
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ─── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Google OAuth token (generato al primo login) ─────────────────────────────
+token.json
+credentials.json
+
+# ─── Generated media (video e frame estratti) ─────────────────────────────────
+frames/
+frames_v2/
+videos/
+videos_v2/
+
+# ─── Claude Code settings ─────────────────────────────────────────────────────
+.claude/
