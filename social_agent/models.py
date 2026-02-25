@@ -69,6 +69,7 @@ class VideoGenerationResult(BaseModel):
     error: Optional[str] = None
     platform_format: str = ""
     prompt_used: Optional[str] = None
+    local_path: Optional[str] = None  # percorso file salvato localmente
 
 
 class ContentReview(BaseModel):

@@ -1,5 +1,7 @@
 import os
 import time
+from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import requests
@@ -51,12 +53,14 @@ class VideoGeneratorAgent:
             video_url = self._poll_task(task_id)
 
             print(f"\n  [Runway] Video generato: {video_url}")
+            local_path = self._save_video(video_url, platform)
             return VideoGenerationResult(
                 status="succeeded",
                 video_url=video_url,
                 task_id=task_id,
                 platform_format=concept.platform_format,
                 prompt_used=prompt,
+                local_path=local_path,
             )
 
         except requests.exceptions.HTTPError as exc:
@@ -135,6 +139,26 @@ class VideoGeneratorAgent:
 
         prompt = " | ".join(parts)
         return prompt[:1000]
+
+    def _save_video(self, video_url: str, platform: str) -> Optional[str]:
+        """Download video and save to videos/ directory. Returns local path or None on error."""
+        try:
+            videos_dir = Path(__file__).parent.parent / "videos"
+            videos_dir.mkdir(exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{timestamp}_{platform}.mp4"
+            local_path = videos_dir / filename
+            response = requests.get(video_url, timeout=120, stream=True)
+            response.raise_for_status()
+            with open(local_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            size_mb = local_path.stat().st_size / (1024 * 1024)
+            print(f"  [Runway] Video salvato: videos/{filename} ({size_mb:.1f} MB)")
+            return str(local_path)
+        except Exception as exc:
+            print(f"  [Runway] Salvataggio video fallito: {exc}")
+            return None
 
     def _create_task(self, prompt: str, ratio: str, duration: int) -> str:
         """POST to Runway text_to_video endpoint, return task ID."""
